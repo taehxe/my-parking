@@ -209,7 +209,7 @@ with gr.Blocks(
     with gr.Row():
         region = gr.Textbox(
             label="검색 지역",
-            placeholder="예: 안양시",
+            placeholder="",
             value=""
         )
 
