@@ -5,7 +5,6 @@ import math
 
 # 주차장 데이터 불러오기
 import os
-import pandas as pd
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE_DIR, "전국주차장정보표준데이터.csv")
