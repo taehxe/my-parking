@@ -222,6 +222,8 @@ with gr.Blocks(
         min_spaces = gr.Number(
             label="최소 주차 가능 대수",
             value=None
+            minimum=0,
+        precision=0
         )
 
         parking_type = gr.Dropdown(
@@ -241,6 +243,8 @@ with gr.Blocks(
             label="예상 주차 시간 (분)",
             value=60,
             minimum=10
+            step=10,
+        precision=0
         )
 
     search_button = gr.Button(
