@@ -240,7 +240,7 @@ with gr.Blocks(
         use_time = gr.Number(
             label="예상 주차 시간 (분)",
             value=60,
-            minimum=1
+            minimum=10
         )
 
     search_button = gr.Button(
