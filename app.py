@@ -2,16 +2,31 @@
 import gradio as gr
 import pandas as pd
 import math
-
-# 주차장 데이터 불러오기
 import os
+import unicodedata
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CSV_PATH = os.path.join(BASE_DIR, "전국주차장정보표준데이터.csv")
+
+target_name = unicodedata.normalize(
+    "NFC", "전국주차장정보표준데이터.csv"
+)
+
+CSV_PATH = None
+
+for filename in os.listdir(BASE_DIR):
+    normalized_name = unicodedata.normalize("NFC", filename)
+
+    if normalized_name == target_name:
+        CSV_PATH = os.path.join(BASE_DIR, filename)
+        break
+
+if CSV_PATH is None:
+    raise FileNotFoundError(
+        f"CSV 파일을 찾을 수 없습니다. 파일 목록: {os.listdir(BASE_DIR)}"
+    )
 
 df = pd.read_csv(CSV_PATH, encoding="cp949")
 
-# 필요한 데이터 선택
 columns = [
     "주차장명",
     "주차장유형",
@@ -27,7 +42,6 @@ columns = [
 
 parking = df[columns].copy()
 
-# 데이터 전처리
 parking = parking.dropna(
     subset=["주차장명", "소재지도로명주소"]
 )
@@ -54,7 +68,6 @@ parking["운영요일"] = parking["운영요일"].fillna("정보 없음")
 parking["전화번호"] = parking["전화번호"].fillna("정보 없음")
 
 
-# 예상 주차요금 계산
 def calculate_fee(row, use_time):
     basic_fee = row["주차기본요금"]
     basic_time = row["주차기본시간"]
@@ -77,7 +90,6 @@ def calculate_fee(row, use_time):
     return int(basic_fee + extra_count * add_fee)
 
 
-# 주차장 검색
 def search_parking(
     region,
     max_fee,
@@ -88,7 +100,7 @@ def search_parking(
 ):
     result = parking.copy()
 
-    if region.strip():
+    if region and region.strip():
         result = result[
             result["소재지도로명주소"].str.contains(
                 region.strip(), na=False
@@ -113,13 +125,11 @@ def search_parking(
 
     if day != "전체":
         result = result[
-            result["운영요일"].str.contains(
-                day, na=False
-            )
+            result["운영요일"].str.contains(day, na=False)
         ]
 
     if result.empty:
-        return pd.DataFrame(), None
+        return result
 
     result = result.copy()
 
@@ -128,30 +138,19 @@ def search_parking(
         axis=1
     )
 
-    result["요금계산가능"] = result["예상주차요금"].notna()
+    result = result.sort_values(
+        by="예상주차요금",
+        ascending=True,
+        na_position="last"
+    )
 
     result["예상주차요금"] = result["예상주차요금"].apply(
         lambda x: f"{int(x):,}원" if pd.notna(x) else "요금 정보 부족"
     )
 
-    result = result.sort_values(
-        by="요금계산가능",
-        ascending=False,
-        kind="stable"
-    )
-
-    result = result.sort_values(
-        by="예상주차요금",
-        ascending=True,
-        kind="stable"
-    )
-
-    result = result.drop(columns=["요금계산가능"])
-
-    return result, result
+    return result
 
 
-# 검색 결과 표시
 def run_search(
     region,
     max_fee,
@@ -160,7 +159,7 @@ def run_search(
     day,
     use_time
 ):
-    result, download_data = search_parking(
+    result = search_parking(
         region,
         max_fee,
         min_spaces,
@@ -172,9 +171,11 @@ def run_search(
     if result.empty:
         return result, None
 
-    download_path = "parking_search_result.csv"
+    download_path = os.path.join(
+        BASE_DIR, "parking_search_result.csv"
+    )
 
-    download_data.to_csv(
+    result.to_csv(
         download_path,
         index=False,
         encoding="utf-8-sig"
@@ -190,7 +191,6 @@ type_values = sorted(
 type_choices = ["전체"] + type_values
 
 
-# 웹사이트 디자인
 with gr.Blocks(
     theme=gr.themes.Soft(
         primary_hue="blue",
@@ -232,12 +232,7 @@ with gr.Blocks(
 
     with gr.Row():
         day = gr.Dropdown(
-            choices=[
-                "전체",
-                "평일",
-                "토요일",
-                "공휴일"
-            ],
+            choices=["전체", "평일", "토요일", "공휴일"],
             label="이용 요일",
             value="전체"
         )
@@ -279,4 +274,7 @@ with gr.Blocks(
     )
 
 
-demo.launch()
+demo.launch(
+    server_name="0.0.0.0",
+    server_port=int(os.environ.get("PORT", 10000))
+)
