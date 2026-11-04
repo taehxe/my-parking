@@ -215,7 +215,7 @@ with gr.Blocks(
 
         max_fee = gr.Number(
             label="최대 기본요금 (원)",
-            value=None
+            value=1000
         )
 
     with gr.Row():
